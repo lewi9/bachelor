@@ -154,7 +154,6 @@ if TRANSFORM_DATA:
 
 modelling_tasks = OrderedDict()
 
-# Forecasting pipeline
 if FORECASTING_PIPELINE:
     transformers = [
         DormantFilter(period=FORECAST_PERIOD + 48),
@@ -260,9 +259,6 @@ if SELECTOR:
 #            metrics=DISTANCE_METRICS,
 #        )
 #    }
-
-
-# Publishing tasks
 
 
 pipelines = OrderedDict()
