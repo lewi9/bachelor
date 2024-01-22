@@ -22,8 +22,8 @@ from app.modelling.task_modelling_pipeline import TaskModellingPipeline
 from app.modelling.transformers import CustomTransformer, NanDropper
 
 
-class Tuner:
-    """Tuner class for tuning the system."""
+class FullTuner:
+    """Full tuner class for tuning the whole system."""
 
     def __init__(
         self,
@@ -46,30 +46,36 @@ class Tuner:
         ----------
         models : dict[str, BaseForecaster]
             Dictionary with models to select from. Based on them tuner will select
-            the base of models that will be used in the system.
+            the models that will be used in the system.
         splitters : dict[str, BaseWindowSplitter]
             Dictionary with splitters to select from. Based on them tuner will select
-            the base of splitters that will be used in the system.
+            the splitters that will be used in the system.
         internal_metrics : dict[str, Callable], default=None
-            Tuner will select one of the metrics that will be used in system to select best model
-            for each sensor.
-            If None, the "best_model" strategy will be not used.
+            If specified, the tuner will include "best model" strategy.
+            The internal_metrics will be used to evaluate the models to selecte the best one
+            according to the metric.
+            If None, the "best_model" strategy will be not used, by default it is None.
         transformer_setups : dict[str, list[Union[BaseTransformer, CustomTransformer]]]
             Dictionary with list of transformers. The best configuration will be selected
-            for the system.
+            for the system. The constant part of transformers - activity filters should be
+            provided in the set_activity_filters() method. The NanDropper will be added
+            automatically at the end of the list.
         forecast_period : int
-            The parameter is used to create the forecast horizon. It is used in the system.
+            The parameter is used to create the forecast horizon.
             It allows to reduce the search space. It also allows to regulate the time of system work.
             The output of the system will be the forecast for the next forecast_period.
+            The forecast_period should be doubled value of time beetwen scheduled system retrainings.
         max_forecasts : int, default=1
             The maximum number of forecasts that will be created by the system.
             The parameter will be used if any internal metric is used.
             In the other case, the parameter will be equal to 1.
             It allows to reduce the search space. It also allows to regulate the time of system work.
         validation_metrics : dict[str, Callable]
-            Dictionary with metrics that will be used to evaluate the system.
+            Dictionary with metrics that will be used to evaluate the performance of the system.
+            Additional metric - time - will be added automatically.
         n_repeats : int, default=3
             Number of repeats - how many pipelines will be created with the same configuration to evaluate them.
+            The tuner will select the best configuration based on the average performance of pipelines.
             Parameter is ignored if validation_dates is not None.
         validation_dates : Optional[Iterable[str]], default=None
             Dates that will be used to evaluate the system.
@@ -108,6 +114,7 @@ class Tuner:
 
     def generate_features_file(self, data: str, output: str) -> None:
         """
+        TODO: support function for generating features file.
         Generate file with features. They will be used as exogenous variables.
 
         Parameters
@@ -130,6 +137,7 @@ class Tuner:
     ) -> None:
         """
         Set file paths that will be used in the system tuning.
+        It is necessary to set them before tuning.
 
         Parameters
         ----------
@@ -151,6 +159,7 @@ class Tuner:
     def set_minimum_time(self, minimum_time: str) -> None:
         """
         Set minimum time that will be used in the system tuning.
+        This date indicated the beginning of the dataset.
 
         Parameters
         ----------
@@ -164,6 +173,8 @@ class Tuner:
     def set_activity_filters(self, activity_filter: Sequence) -> None:
         """
         Set activity filters that will be used in the system tuning.
+        The filter will be applied at the beginning of forecasting pipeline.
+        E.g DormantFilter, CompletenessFilter.
 
         Parameters
         ----------
@@ -201,6 +212,7 @@ class Tuner:
         return self._build_problem()
 
     def _build_problem(self):
+        """Build the problem for optimization."""
         return self.SystemOptimizationProblem(self)
 
     class SystemOptimizationProblem(Problem):
@@ -209,7 +221,7 @@ class Tuner:
         SELECTOR_STRATEGIES = 1
         ADDITIONAL_PARAMETERS = 3
 
-        def __init__(self, tuner_instance: Tuner):
+        def __init__(self, tuner_instance: FullTuner):
             """Initialize the problem based on the tuner instance."""
 
             self.tuner_instance = tuner_instance
@@ -235,6 +247,7 @@ class Tuner:
             )
 
         def _evaluate(self, x, out, *args, **kwargs):
+            """Evaluate the solution."""
             f = [[] for _ in range(self.len_metrics + 1)]
 
             for index, solution in enumerate(x):
@@ -270,6 +283,12 @@ class Tuner:
                         validation_date=validation_date,
                     )
 
+                    # Add pipeline evaluation to pipeline dict
+
+                    # Collect the data and insert them to f array
+
+                    # Constraint - the time
+
         def _get_pipeline_dict(
             self,
             index: int,
@@ -280,6 +299,7 @@ class Tuner:
             n_forecasts: int,
             validation_date: str,
         ) -> dict:
+            """Construct the pipeline dictionary."""
             one_data_file_path = os.path.join(
                 self.tuner_instance.temp_dir, f"{index}_{data_ns.ONE_DATA_FILE}"
             )

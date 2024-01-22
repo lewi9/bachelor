@@ -8,7 +8,6 @@ from typing import OrderedDict
 
 import numpy as np
 import pandas as pd
-from sktime.forecasting.arima import ARIMA
 from sktime.forecasting.croston import Croston
 from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.arch import StatsForecastGARCH
@@ -31,14 +30,8 @@ from app.data_managers.transformation_tasks import (
     CreateStandarizedWideFormatTask,
 )
 
-# from app.interpolation.distance_matrix_task import DistanceMatrixTask
-# from app.interpolation.task_interpolation_pipeline import TaskInterpolationPipeline
-
 from app.modelling.average_selector import AverageSelector
-from app.modelling.best_selector import BestSelector
-from app.modelling.evaluator import Evaluator
 from app.modelling.forecasting_pipeline import ForecastingPipeline
-from app.modelling.metrics import mae
 from app.modelling.task_modelling_pipeline import TaskModellingPipeline
 from app.modelling.transformers import (
     CompletnessFilter,
@@ -49,9 +42,9 @@ from app.modelling.transformers import (
 )
 from app.utils.process_pipeline import ProcessPipeline
 
-DOWNLOAD_DATA = 0
-EXCTRACT_DATA = 0
-TRANSFORM_DATA = 0
+DOWNLOAD_DATA = 1
+EXCTRACT_DATA = 1
+TRANSFORM_DATA = 1
 
 FORECASTING_PIPELINE = 0
 EVALUATOR = 0
@@ -203,37 +196,11 @@ if FORECASTING_PIPELINE:
             result_dir=data_ns.FORECAST_RESULT_DIR,
             transformers=transformers,
             forecasters=forecasters,
-            splitters=splitters,
-            max_forecasts=6,
+            forecast_horizon=np.arange(1, FORECAST_PERIOD + 1),
             exo_filler="mean",
             mode=FORECASTING_PIPELINE_MODE,
         )
     }
-
-# Evaluate results
-"""
-if EVALUATOR:
-    modelling_tasks |= {
-        "Evaluator": Evaluator(
-            forecast_data_dir=data_ns.FORECAST_RESULT_DIR,
-            transformed_data_dir=data_ns.TRANSFORMED_DATA_DIR,
-            result_path=data_ns.EVALUATION_PATH,
-            metric=mae,
-        )
-    }
-
-# Select best model for each sensor
-if SELECTOR:
-    modelling_tasks |= {
-        "BestSelector": BestSelector(
-            forecast_data_dir=data_ns.FORECAST_RESULT_DIR,
-            evaluation_path=data_ns.EVALUATION_PATH,
-            result_path=data_ns.SELECTION_FILE,
-            min_date=now_str,
-            max_date=None,
-        )
-    }
-"""
 
 if SELECTOR:
     modelling_tasks |= {
@@ -246,26 +213,10 @@ if SELECTOR:
     }
 
 
-# TODO: ...
-# interpolation_tasks = OrderedDict()
-
-# if CREATE_DISTANCE_MATRIX:
-#    interpolation_tasks |= {
-#        "Create Distance Matrix": DistanceMatrixTask(
-#            grid_path=data_ns.GRID_FILE_PATH,
-#            stations_path=data_ns.LAT_LON_FILE_PATH,
-#            grid_epsg=2180,
-#            output_path=data_ns.DISTANCE_MATRIX_GRID_FILE,
-#            metrics=DISTANCE_METRICS,
-#        )
-#    }
-
-
 pipelines = OrderedDict()
 pipelines |= {
     "ETL Pipeline": TaskETLPipeline(tasks=etl_tasks),
     "Modelling Pipeline": TaskModellingPipeline(tasks=modelling_tasks),
-    #    "Interpolation Pipeline": TaskInterpolationPipeline(tasks=interpolation_tasks),
 }
 
 process_pipeline = ProcessPipeline(pipelines=pipelines)

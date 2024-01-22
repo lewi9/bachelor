@@ -12,7 +12,7 @@ class CustomTransformer(ABC):
     """
 
     def fit(self, y: pd.Series) -> CustomTransformer:
-        """Fit transformer."""
+        """Default fit method. It will be called before transform method."""
         return self
 
     @abstractmethod
@@ -31,16 +31,26 @@ class ImputerBackTime(CustomTransformer):
 
     def __init__(self, period_to_take_value_from: int = 24):
         """
+        Initialize ImputerBackTime with period to take value from.
+
         Parameters
         ----------
         period_to_take_value_from : int
-            Nans will be filled with value from period_to_take_value_from hours before.
+            Period in hours to take value from.
+            Example: period_to_take_value_from=24, then if value is missing at 25th hour,
+            it will be imputed with value from 1st hour. If value is missing at 26th hour,
+            it will be imputed with value from 2nd hour.
         """
         self.period_to_take_value_from = period_to_take_value_from
 
     def transform(self, y: pd.Series) -> pd.Series:
         """
         Returns series with imputed values.
+
+        Parameters
+        ----------
+        y : pd.Series
+            Series to impute.
         """
         y_imputed = y.copy()
         for i in range(self.period_to_take_value_from, len(y)):
@@ -59,6 +69,8 @@ class ImputerPandas(CustomTransformer):
 
     def __init__(self, method: str = "linear"):
         """
+        Initialize ImputerPandas with method of interpolation.
+
         Parameters
         ----------
         method : str
@@ -69,25 +81,39 @@ class ImputerPandas(CustomTransformer):
         self.method = method
 
     def transform(self, y: pd.Series) -> pd.Series:
+        """
+        Impute values with pandas.interpolate
+
+        Parameters
+        ----------
+        y : pd.Series
+            Series to impute.
+        """
         return y.interpolate(self.method)
 
 
 class NanDropper(CustomTransformer):
     """
-    Drop leading nans from series.
+    Drop missing values at the beginning of series.
     """
 
     def fit(self, y: pd.Series) -> NanDropper:
+        """
+        Check if missing values are only at the beginning of series.
+        """
         nans = y.isna().sum()
         series = y.iloc[:nans]
         if not series.isna().all():
             raise ValueError(
                 "There are nans in the middle of series."
-                "NanDropper can remove only leading nans."
+                "NanDropper can missing values only at the beginning of series."
             )
         return self
 
     def transform(self, y: pd.Series) -> pd.Series:
+        """
+        Return series without missing values at the beginning.
+        """
         return y.dropna()
 
 
@@ -97,9 +123,28 @@ class CompletnessFilter(CustomTransformer):
     """
 
     def __init__(self, threshold: float):
+        """
+        Parameters
+        ----------
+        threshold : float
+            Threshold of completness. If series has more missing values than threshold, raise error.
+        """
         self.threshold = threshold
 
     def transform(self, y: pd.Series) -> pd.Series:
+        """
+        Check if series has more missing values than threshold.
+
+        Parameters
+        ----------
+        y : pd.Series
+            Series to check.
+
+        Raises
+        ------
+        ValueError
+            If series has more missing values than threshold.
+        """
         if y.isna().sum() > self.threshold * len(y):
             raise ValueError("There is too much missing data.")
         return y
@@ -111,9 +156,26 @@ class DormantFilter(CustomTransformer):
     """
 
     def __init__(self, period: int):
+        """
+        Check if sensor is active in last period hours.
+
+        Parameters
+        ----------
+        period : int
+            Period in hours.
+        """
         self.period = period
 
     def transform(self, y: pd.Series) -> pd.Series:
+        """
+        Check if sensor is active in last period hours.
+        Sensor is active if it has at least one non-nan value in last period hours.
+
+        Parameters
+        ----------
+        y : pd.Series
+            Series to check.
+        """
         if y.iloc[-self.period :].isna().all():
             raise ValueError("Sensor is inactive.")
         return y

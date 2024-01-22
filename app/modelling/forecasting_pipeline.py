@@ -4,9 +4,10 @@ import logging
 import os
 import shutil
 import warnings
+from typing import Sequence, Union
 
+import numpy as np
 import pandas as pd
-from sktime.split.base import BaseWindowSplitter
 from sktime.forecasting.base import BaseForecaster
 
 from app.data_managers.namespaces import column_names_ns
@@ -39,8 +40,7 @@ class ForecastingPipeline(TaskModelling):
         result_dir: str,
         transformers: list,
         forecasters: dict[str, BaseForecaster],
-        splitters: dict[str, BaseWindowSplitter],
-        max_forecasts: int = 3,
+        forecast_horizon: Union[np.ndarray, int, Sequence[int]],
         exo_filler: ExoFiller = "mean",
         mode: ForecastingPipelineMode = "recreate",
     ):
@@ -54,14 +54,12 @@ class ForecastingPipeline(TaskModelling):
             Path to directory, where forecasts will be saved.
         transformers : list
             List of transformers that will be run on data.
+            They will be applied in order from list to endo and exo.
         forecasters : dict[str, BaseForecaster]
             Dictionary with forecasters. Key is the string with name
             of the forecaster. The value is forecaster.
-        splitters : dict[str, BaseWindowSplitter]
-            Splitters to split data into train and test sets.
-        max_forecasts : int
-            Parameter to controll number of forecasts - only the one forecast is performed ahead,
-            the rest of them may be used to evaluate model.
+        forecast_horizon : Union[np.ndarray, int, Sequence[int]]
+            Forecast horizon for forecasting.
         exo_filler : ExoFiller
             Method to fill exo nans after transformers are applied.
             Only "mean" is supported now.
@@ -75,8 +73,7 @@ class ForecastingPipeline(TaskModelling):
         self.result_dir = result_dir
         self.transformers = transformers
         self.forecasters = forecasters
-        self.splitters = splitters
-        self.max_forecasts = max_forecasts
+        self.forecast_horizon = forecast_horizon
         self.exo_filler = exo_filler
         self.mode = mode
 
@@ -187,44 +184,35 @@ class ForecastingPipeline(TaskModelling):
         exo = data_structure.exo
         results = []
 
-        for splitter_name, splitter in self.splitters.items():
-            fh = splitter.get_fh()
-            for series_name, series in endo_dict.items():
-                for forecaster_name, forecaster in self.forecasters.items():
-                    logging.info("Processing %s with %s", series_name, forecaster_name)
-                    for train, test in list(splitter.split(series))[
-                        -self.max_forecasts :
-                    ]:
-                        try:
-                            forecaster.fit(
-                                series.reset_index(drop=True).iloc[train],
-                                X=exo.reset_index(drop=True).iloc[train],
-                            )
-                            prediction = forecaster.predict(
-                                fh=fh, X=exo.reset_index(drop=True).iloc[test]
-                            )
-                        except Exception as exc:
-                            logging.warning(exc)
-                            continue
-                        dates = pd.date_range(
-                            start=series.index[train[-1]],
-                            periods=len(fh) + 1,
-                            freq="H",
-                        )[1:]
-                        result = pd.DataFrame(
-                            {
-                                column_names_ns.VALUE: prediction.reset_index(
-                                    drop=True
-                                ),
-                                column_names_ns.TIME: dates,
-                            }
-                        )
+        for series_name, series in endo_dict.items():
+            for forecaster_name, forecaster in self.forecasters.items():
+                try:
+                    forecaster.fit(
+                        series.reset_index(drop=True),
+                        X=exo.reset_index(drop=True),
+                    )
+                    prediction = forecaster.predict(
+                        fh=self.forecast_horizon,
+                        X=exo.reset_index(drop=True),
+                    )
+                except Exception as exc:
+                    logging.warning(exc)
+                    continue
+                dates = pd.date_range(
+                    start=series.index[-1],
+                    periods=len(self.forecast_horizon) + 1,
+                    freq="H",
+                )[1:]
+                result = pd.DataFrame(
+                    {
+                        column_names_ns.VALUE: prediction.reset_index(drop=True),
+                        column_names_ns.TIME: dates,
+                    }
+                )
 
-                        result[column_names_ns.MODEL] = (
-                            forecaster_name + "_" + splitter_name
-                        )
-                        result[column_names_ns.PREDICTED] = series_name
-                        results.append(result)
+                result[column_names_ns.MODEL] = forecaster_name
+                result[column_names_ns.PREDICTED] = series_name
+                results.append(result)
 
-            warnings.filterwarnings("always")
-            return pd.concat(results, ignore_index=True)
+        warnings.filterwarnings("always")
+        return pd.concat(results, ignore_index=True)

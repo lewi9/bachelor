@@ -10,4 +10,4 @@ ForecastingPipelineMode = Literal[None, "recreate"]
 
 # Modelling
 ExoFiller = Literal["mean"]
-EvaluatorMetric = Callable[[pd.Series, pd.Series], float]
+SeriesMetric = Callable[[pd.Series, pd.Series], float]

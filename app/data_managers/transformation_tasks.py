@@ -111,9 +111,8 @@ class CreateStandarizedWideFormatTask(TaskETL):
         self.features_path = features_path
         self.result_dir = result_dir
         self.min_time = pd.to_datetime(min_time, format=date_formats_ns.MIN_TIME_FORMAT)
-        self.max_time = pd.to_datetime(
-            max_time, format=date_formats_ns.MAX_TIME_FORMAT
-        ) + pd.DateOffset(hours=forecast_period)
+        self.max_time = pd.to_datetime(max_time, format=date_formats_ns.MAX_TIME_FORMAT)
+        self.forecast_period = forecast_period
 
     def _run(self):
         """
