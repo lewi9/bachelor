@@ -107,7 +107,7 @@ class BestSelector(Selector):
             forecasts = [
                 forecast.query(
                     f"{column_names_ns.PREDICTED} == '{variable}' & "
-                    f"{column_names_ns.MODEL} == '{model}'"
+                    f"{column_names_ns.FORECASTER} == '{model}'"
                 )
                 for variable, model in [
                     row[col].split(column_names_ns.SEPARATOR)

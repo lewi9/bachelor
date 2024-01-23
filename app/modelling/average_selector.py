@@ -38,14 +38,14 @@ class AverageSelector(Selector):
             )
 
             # Drop model column
-            forecast = forecast.drop(columns=column_names_ns.MODEL)
+            forecast = forecast.drop(columns=column_names_ns.FORECASTER)
 
             # Calculate average for each predicted variable
             forecasts = forecast.groupby(
                 forecast.columns.drop(column_names_ns.VALUE).to_list(), as_index=False
             ).mean()
 
-            forecasts[column_names_ns.MODEL] = values_ns.AVERAGE_MODEL
+            forecasts[column_names_ns.FORECASTER] = values_ns.AVERAGE_MODEL
 
             output.append(forecasts)
 

@@ -4,14 +4,15 @@ from types import SimpleNamespace
 
 column_names_ns = SimpleNamespace(
     BEST_MODEL="BEST_MODEL",
+    DEPENDENT_VARIABLE_NAME="DEPENDENT_VARIABLE_NAME",
     ENDO_COLUMNS=["PM10", "PM25", "PM1"],
     FEATURES="feature",
-    FORECAST_COLUMNS=["VALUE", "time", "MODEL", "PREDICTED"],
+    FORECAST_COLUMNS=["VALUE", "time", "FORECASTER", "DEPENDENT_VARIABLE_NAME"],
     FILE_NAME="FILE_NAME",
     ID="ID",
     LAT="lat",
     LON="lon",
-    MODEL="MODEL",
+    FORECASTER="FORECASTER",
     PM10="PM10",
     PM25="PM25",
     PM1="PM1",
@@ -39,6 +40,8 @@ data_ns = SimpleNamespace(
 )
 
 date_formats_ns = SimpleNamespace(
+    FORECASTING_PIPELINE_DATETIME_FORMAT="%Y-%m-%d %H:%M:%S",
+    LAST_VALID_ACTUAL_TIME_FORMAT="%Y-%m-%d %H",
     MAX_TIME_FORMAT="%Y-%m-%d %H",
     MIN_TIME_FORMAT="%Y-%m-%d %H",
     SENSOR_DATETIME_FORMAT="%Y-%m-%dT%H:%M:%S.%fZ",
