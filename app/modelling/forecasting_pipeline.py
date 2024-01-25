@@ -12,10 +12,10 @@ from sktime.transformations.series.outlier_detection import HampelFilter
 from app.data_managers.namespaces import column_names_ns, date_formats_ns
 from app.data_managers.types import ExoFiller, ForecastingPipelineMode
 from app.modelling.splitters import BaseWindowSplitter
-from app.modelling.task_modelling import TaskModelling
+from app.utils.task import Task
 
 
-class ForecastingPipeline(TaskModelling):
+class ForecastingPipeline(Task):
     """
     Pipeline to perform forecasts on prepared data.
     """

@@ -17,7 +17,6 @@ from app.data_managers.download_tasks import (
     DownloadMeteoDataTask,
     DownloadSensorDataTask,
 )
-from app.data_managers.task_etl_pipeline import TaskETLPipeline
 from app.data_managers.extraction_tasks import (
     SensorDataExtractionTask,
     WeatherDataExtractionTask,
@@ -25,11 +24,9 @@ from app.data_managers.extraction_tasks import (
 from app.data_managers.namespaces import data_ns
 from app.data_managers.transformation_tasks import TransformSensorMeteoDatasetsTask
 
-from app.modelling.average_selector import AverageSelector
 from app.modelling.forecasting_pipeline import ForecastingPipeline
 from app.modelling.metrics import mae, mse, rme, rmse
 from app.modelling.splitters import ExpandingWindowSplitter, SlidingWindowSplitter
-from app.modelling.task_modelling_pipeline import TaskModellingPipeline
 from app.modelling.transformers import (
     CompletnessFilter,
     DormantFilter,
@@ -38,12 +35,13 @@ from app.modelling.transformers import (
     NanDropper,
 )
 from app.utils.process_pipeline import ProcessPipeline
+from app.utils.task_pipeline import TaskPipeline
 
-DOWNLOAD_DATA = 0
-EXCTRACT_DATA = 0
+DOWNLOAD_DATA = 1
+EXCTRACT_DATA = 1
 TRANSFORM_DATA = 0
 
-FORECASTING_PIPELINE = 1
+FORECASTING_PIPELINE = 0
 EVALUATOR = 0
 SELECTOR = 0
 
@@ -205,21 +203,10 @@ if FORECASTING_PIPELINE:
         )
     }
 
-if SELECTOR:
-    modelling_tasks |= {
-        "AverageSelector": AverageSelector(
-            forecast_data_dir=data_ns.FORECAST_RESULT_DIR,
-            result_path=data_ns.SELECTION_FILE,
-            min_date=now_str,
-            max_date=None,
-        )
-    }
-
-
 pipelines = OrderedDict()
 pipelines |= {
-    "ETL Pipeline": TaskETLPipeline(tasks=etl_tasks),
-    "Modelling Pipeline": TaskModellingPipeline(tasks=modelling_tasks),
+    "ETL Pipeline": TaskPipeline(tasks=etl_tasks),
+    "Modelling Pipeline": TaskPipeline(tasks=modelling_tasks),
 }
 
 process_pipeline = ProcessPipeline(pipelines=pipelines)

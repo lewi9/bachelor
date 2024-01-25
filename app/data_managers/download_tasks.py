@@ -8,11 +8,11 @@ import requests
 import pandas as pd
 
 from app.data_managers.namespaces import column_names_ns
-from app.data_managers.task_etl import TaskETL
 from app.data_managers.types import DownloadMode
+from app.utils.task import Task
 
 
-class DownloadSensorDataTask(TaskETL):
+class DownloadSensorDataTask(Task):
     """
     Download sensors data from AIRLY rest API
     """
@@ -79,7 +79,7 @@ class DownloadSensorDataTask(TaskETL):
                 json.dump(data, outfile)
 
 
-class DownloadMeteoDataTask(TaskETL):
+class DownloadMeteoDataTask(Task):
     """
     Download meteo data.
     """

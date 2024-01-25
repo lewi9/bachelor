@@ -12,11 +12,11 @@ from app.data_managers.namespaces import (
     sensor_json_ns,
     weather_json_ns,
 )
-from app.data_managers.task_etl import TaskETL
 from app.data_managers.types import ExtractionMode
+from app.utils.task import Task
 
 
-class SensorDataExtractionTask(TaskETL):
+class SensorDataExtractionTask(Task):
     """
     Responsible for load sensors data from json files and store results in csv files.
     As the result file per sensor is created or data is appended.
@@ -172,7 +172,7 @@ class SensorDataExtractionTask(TaskETL):
         return result
 
 
-class WeatherDataExtractionTask(TaskETL):
+class WeatherDataExtractionTask(Task):
     """
     Responsible for load weather data from json files and store results in csv files.
     As the result file per sensor is created or data is appended.

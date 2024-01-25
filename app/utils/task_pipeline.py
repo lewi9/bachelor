@@ -1,7 +1,6 @@
-"""Base Task Pipeline class."""
+"""Pipeline for running multiple tasks."""
 import datetime
 import logging
-from abc import ABC
 from typing import OrderedDict
 
 import numpy as np
@@ -9,7 +8,7 @@ import numpy as np
 from app.utils.task import Task
 
 
-class BaseTaskPipeline(ABC):
+class TaskPipeline:
     """Pipeline for running multiple tasks."""
 
     def __init__(self, tasks: OrderedDict[str, Task]):

@@ -6,10 +6,10 @@ import os
 import pandas as pd
 
 from app.data_managers.namespaces import column_names_ns, date_formats_ns
-from app.data_managers.task_etl import TaskETL
+from app.utils.task import Task
 
 
-class TransformSensorMeteoDatasetsTask(TaskETL):
+class TransformSensorMeteoDatasetsTask(Task):
     """Transform data from ingested to transformed - standardized - format."""
 
     def __init__(
