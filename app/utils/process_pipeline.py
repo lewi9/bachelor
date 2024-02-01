@@ -4,17 +4,17 @@ from typing import OrderedDict
 
 import numpy as np
 
-from app.utils.task_pipeline import BaseTaskPipeline
+from app.utils.task_pipeline import TaskPipeline
 
 
 class ProcessPipeline:
     """Pipeline for running multiple tasks."""
 
-    def __init__(self, pipelines: OrderedDict[str, BaseTaskPipeline]):
+    def __init__(self, pipelines: OrderedDict[str, TaskPipeline]):
         """
         Parameters
         ----------
-        pipelines : OrderedDict[str, BaseTaskPipeline]
+        pipelines : OrderedDict[str, TaskPipeline]
             Ordered dictionary of pipelines to run.
         """
         self.pipelines = pipelines

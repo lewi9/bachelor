@@ -46,7 +46,7 @@ class BaseWindowSplitter(ABC):
         return self._step_length
 
     @abstractmethod
-    def split(self, y: pd.Series, forecasts: int) -> Sequence[int]:
+    def split(self, y: pd.Series, forecasts: int) -> (Sequence[int], Sequence[int]):
         """Split a single series into windows."""
 
 
@@ -68,7 +68,7 @@ class ExpandingWindowSplitter(BaseWindowSplitter):
         """
         super().__init__(0, fh, step_length)
 
-    def split(self, y: pd.Series, forecasts: int) -> Sequence[int]:
+    def split(self, y: pd.Series, forecasts: int) -> (Sequence[int], Sequence[int]):
         """
         Split a single series into windows.
 
@@ -76,21 +76,24 @@ class ExpandingWindowSplitter(BaseWindowSplitter):
         ----------
         y : pd.Series
             Series to split.
+        X : pd.DataFrame
+            Exogenous variables.
         forecasts : int
             Number of forecasts to make.
         """
-        y_with_new_index = y.reset_index(drop=True)
+        y_len = len(y)
+        len_fh = len(self.fh)
         for i in range(forecasts):
-            if i == 0:
-                yield y_with_new_index.index.to_list()
-                continue
-            yield y_with_new_index.index[: -i * self.step_length].to_list()
+            yield (
+                list(range(0, y_len - i * self.step_length)),
+                list(range(0, y_len + len_fh - i * self.step_length)),
+            )
 
 
 class SlidingWindowSplitter(BaseWindowSplitter):
     """Sliding window splitter."""
 
-    def split(self, y: pd.Series, forecasts: int) -> Sequence[int]:
+    def split(self, y: pd.Series, forecasts: int) -> (Sequence[int], Sequence[int]):
         """
         Split a single series into windows.
 
@@ -101,11 +104,12 @@ class SlidingWindowSplitter(BaseWindowSplitter):
         forecasts : int
             Number of forecasts to make.
         """
-        y_with_new_index = y.reset_index(drop=True)
+        y_len = len(y)
+        len_fh = len(self.fh)
         for i in range(forecasts):
-            if i == 0:
-                yield y_with_new_index.index[-self.window_length :].to_list()
-                continue
-            yield y_with_new_index.index[: -i * self.step_length][
-                -self.window_length :
-            ].to_list()
+            yield (
+                list(range(0, y_len - i * self.step_length))[-self.window_length :],
+                list(range(0, y_len + len_fh - i * self.step_length))[
+                    -self.window_length - len_fh :
+                ],
+            )

@@ -8,6 +8,7 @@ from typing import OrderedDict
 
 import numpy as np
 import pandas as pd
+from sktime.forecasting.arima import ARIMA, AutoARIMA
 from sktime.forecasting.croston import Croston
 from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.arch import StatsForecastGARCH
@@ -24,7 +25,7 @@ from app.data_managers.extraction_tasks import (
 from app.data_managers.namespaces import data_ns
 from app.data_managers.transformation_tasks import TransformSensorMeteoDatasetsTask
 
-from app.modelling.forecasting_pipeline import ForecastingPipeline
+from app.modelling.forecasting_pipeline_task import ForecastingPipelineTask
 from app.modelling.metrics import mae, mse, rme, rmse
 from app.modelling.splitters import ExpandingWindowSplitter, SlidingWindowSplitter
 from app.modelling.transformers import (
@@ -37,24 +38,16 @@ from app.modelling.transformers import (
 from app.utils.process_pipeline import ProcessPipeline
 from app.utils.task_pipeline import TaskPipeline
 
-DOWNLOAD_DATA = 1
-EXCTRACT_DATA = 1
+DOWNLOAD_DATA = 0
+EXCTRACT_DATA = 0
 TRANSFORM_DATA = 0
 
-FORECASTING_PIPELINE = 0
-EVALUATOR = 0
-SELECTOR = 0
-
-# Disabled for now
-CREATE_DISTANCE_MATRIX = 0
+FORECASTING_PIPELINE = 1
 
 FULL_EXTRACTION = 0
 
 FORECAST_PERIOD = 48
 FORECASTING_PIPELINE_MODE = "recreate"
-
-# Disabled for now
-DISTANCE_METRICS = ("euclidean",)
 
 # SETUP
 logging.getLogger().setLevel(logging.INFO)
@@ -143,11 +136,13 @@ if FORECASTING_PIPELINE:
         DormantFilter(period=FORECAST_PERIOD + 48),
         CompletnessFilter(0.5),
         ImputerBackTime(period_to_take_value_from=24),
-        # HampelFilter(window_length=72),
+        HampelFilter(window_length=72),
         ImputerPandas(method="linear"),
         NanDropper(),
     ]
     forecasters = {
+        "AutoARIMA": AutoARIMA(),
+        "ARIMA": ARIMA(),
         "CROSTON_0.1": Croston(smoothing=0.1),
         "CROSTON_0.2": Croston(smoothing=0.2),
         "CROSTON_0.5": Croston(smoothing=0.5),
@@ -190,7 +185,7 @@ if FORECASTING_PIPELINE:
     }
 
     modelling_tasks |= {
-        "Forecasting Pipeline": ForecastingPipeline(
+        "Forecasting Pipeline": ForecastingPipelineTask(
             input_dir=data_ns.TRANSFORMED_DATA_DIR,
             result_dir=data_ns.FORECAST_RESULT_DIR,
             max_forecasts=3,
@@ -200,6 +195,7 @@ if FORECASTING_PIPELINE:
             last_valid_actual="2024-01-23 15",
             exo_filler="mean",
             mode=FORECASTING_PIPELINE_MODE,
+            parallel_actors=5,
         )
     }
 

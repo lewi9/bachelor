@@ -15,7 +15,7 @@ from app.modelling.splitters import BaseWindowSplitter
 from app.utils.task import Task
 
 
-class ForecastingPipeline(Task):
+class ForecastingPipelineTask(Task):
     """
     Pipeline to perform forecasts on prepared data.
     """
