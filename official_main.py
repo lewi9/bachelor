@@ -25,9 +25,10 @@ from app.data_managers.extraction_tasks import (
 from app.data_managers.namespaces import data_ns
 from app.data_managers.transformation_tasks import TransformSensorMeteoDatasetsTask
 
+from app.modelling.agg_model_strategy_task import AggModelStrategyTask
 from app.modelling.best_model_strategy_task import BestModelStrategyTask
 from app.modelling.forecasting_pipeline_task import ForecastingPipelineTask
-from app.modelling.metrics import mae, mse, rme, rmse
+from app.modelling.metrics import mae, maxae, rmse
 from app.modelling.splitters import ExpandingWindowSplitter, SlidingWindowSplitter
 from app.modelling.transformers import (
     CompletnessFilter,
@@ -36,6 +37,7 @@ from app.modelling.transformers import (
     ImputerPandas,
     NanDropper,
 )
+from app.utils.evaluator import Evaluator
 from app.utils.process_pipeline import ProcessPipeline
 from app.utils.task_pipeline import TaskPipeline
 
@@ -43,8 +45,11 @@ DOWNLOAD_DATA = 0
 EXCTRACT_DATA = 0
 TRANSFORM_DATA = 0
 
-FORECASTING_PIPELINE = 0
+FORECASTING_PIPELINE = 1
 BEST_MODEL_STRATEGY = 1
+AGG_MODEL_STRATEGY = 0
+
+PICKLE_EVALUATION = 1
 
 FULL_EXTRACTION = 0
 
@@ -138,13 +143,13 @@ if FORECASTING_PIPELINE:
         DormantFilter(period=FORECAST_PERIOD + 48),
         CompletnessFilter(0.5),
         ImputerBackTime(period_to_take_value_from=24),
-        # HampelFilter(window_length=72),
+        HampelFilter(window_length=72),
         ImputerPandas(method="linear"),
         NanDropper(),
     ]
     forecasters = {
-        # "AutoARIMA": AutoARIMA(),
-        # "ARIMA": ARIMA(),
+        "AutoARIMA": AutoARIMA(),
+        "ARIMA": ARIMA(),
         "CROSTON_0.1": Croston(smoothing=0.1),
         "CROSTON_0.2": Croston(smoothing=0.2),
         "CROSTON_0.5": Croston(smoothing=0.5),
@@ -213,6 +218,16 @@ if BEST_MODEL_STRATEGY:
         )
     }
 
+if not BEST_MODEL_STRATEGY and AGG_MODEL_STRATEGY:
+    modelling_tasks |= {
+        "Agg Model Strategy": AggModelStrategyTask(
+            forecast_dir=data_ns.FORECAST_RESULT_DIR,
+            result_dir=data_ns.SELECTED_DATA_DIR,
+            aggregation_function="mean",
+            mode="recreate",
+        )
+    }
+
 pipelines = OrderedDict()
 pipelines |= {
     "ETL Pipeline": TaskPipeline(tasks=etl_tasks),
@@ -227,3 +242,19 @@ logging.info(
     "Each task execution time: %s", process_pipeline.get_tasks_execution_time()
 )
 logging.info("Total execution time: %s", process_pipeline.execution_time)
+
+ev = Evaluator(
+    selected_data_dir=data_ns.SELECTED_DATA_DIR,
+    reference_data_dir=data_ns.TRANSFORMED_DATA_DIR,
+    metrics=[mae, rmse, maxae],
+)
+
+results = ev.evaluate()
+results["execution_time"] = process_pipeline.execution_time
+
+logging.info("Results: %s", results)
+
+if PICKLE_EVALUATION:
+    with open("results.pkl", "wb") as f:
+        pickle.dump(results, f)
+        logging.info("Results saved to file: results.pkl")
