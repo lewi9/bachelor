@@ -1,6 +1,7 @@
 data/
 forecast_result/
 grid/
+selected_data/
 sensors/
 sensors_data/
 to_extract/

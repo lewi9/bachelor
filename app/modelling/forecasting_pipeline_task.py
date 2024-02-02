@@ -152,6 +152,7 @@ def _process_data(
     return ray.get(results_ref)
 
 
+@ray.remote
 def _run_remote(
     file_name: str,
     input_dir: str,
@@ -224,7 +225,13 @@ def _run_remote(
         filtered_predicted = filter(
             lambda x: isinstance(x, pd.DataFrame), chained_predicted
         )
-        predictions.extend(list(filtered_predicted))
+        mapped_filtered_predicted = map(
+            lambda df: df.assign(
+                **{column_names_ns.DEPENDENT_VARIABLE_NAME: dependent_variable}
+            ),
+            filtered_predicted,
+        )
+        predictions.extend(list(mapped_filtered_predicted))
 
     if not predictions:
         logging.warning("File %s cannot be processed", file_name)
@@ -287,7 +294,7 @@ class ForecastingPipelineTask(Task):
             The recreating of cluster is needed to avoid memory leaks.
             I don't know how to choose this number.
         """
-        super().__init__(parallel=True)
+        super().__init__()
         self.input_dir = input_dir
         self.result_dir = result_dir
         self.max_forecasts = max_forecasts
@@ -332,13 +339,10 @@ class ForecastingPipelineTask(Task):
             List with names of files that will be processed.
         """
         ray.init()
-        pipelines = [
-            _run_remote.remote(  # pylint: disable=E1101:no-member
-                file_name=file_name, **self.__dict__
-            )
+        results_ref = [
+            _run_remote.remote(file_name=file_name, **self.__dict__)
             for file_name in file_names
         ]
-        results_ref = [pipeline.run.remote() for pipeline in pipelines]
         ray.get(results_ref)
         ray.shutdown()
 

@@ -4,15 +4,12 @@ import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-import ray
-
 
 class Task(ABC):
     """Abstract class for task execution."""
 
-    def __init__(self, parallel: bool = False):
+    def __init__(self):
         self.time_elapsed = None
-        self.parallel = parallel
 
     def run(self):
         """Run task."""
@@ -28,5 +25,4 @@ class Task(ABC):
         logging.info("Time elapsed: %s", self.time_elapsed)
 
     @abstractmethod
-    def _run(self):
-        ...
+    def _run(self): ...

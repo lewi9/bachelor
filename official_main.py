@@ -25,6 +25,7 @@ from app.data_managers.extraction_tasks import (
 from app.data_managers.namespaces import data_ns
 from app.data_managers.transformation_tasks import TransformSensorMeteoDatasetsTask
 
+from app.modelling.best_model_strategy_task import BestModelStrategyTask
 from app.modelling.forecasting_pipeline_task import ForecastingPipelineTask
 from app.modelling.metrics import mae, mse, rme, rmse
 from app.modelling.splitters import ExpandingWindowSplitter, SlidingWindowSplitter
@@ -42,7 +43,8 @@ DOWNLOAD_DATA = 0
 EXCTRACT_DATA = 0
 TRANSFORM_DATA = 0
 
-FORECASTING_PIPELINE = 1
+FORECASTING_PIPELINE = 0
+BEST_MODEL_STRATEGY = 1
 
 FULL_EXTRACTION = 0
 
@@ -136,13 +138,13 @@ if FORECASTING_PIPELINE:
         DormantFilter(period=FORECAST_PERIOD + 48),
         CompletnessFilter(0.5),
         ImputerBackTime(period_to_take_value_from=24),
-        HampelFilter(window_length=72),
+        # HampelFilter(window_length=72),
         ImputerPandas(method="linear"),
         NanDropper(),
     ]
     forecasters = {
-        "AutoARIMA": AutoARIMA(),
-        "ARIMA": ARIMA(),
+        # "AutoARIMA": AutoARIMA(),
+        # "ARIMA": ARIMA(),
         "CROSTON_0.1": Croston(smoothing=0.1),
         "CROSTON_0.2": Croston(smoothing=0.2),
         "CROSTON_0.5": Croston(smoothing=0.5),
@@ -195,7 +197,19 @@ if FORECASTING_PIPELINE:
             last_valid_actual="2024-01-23 15",
             exo_filler="mean",
             mode=FORECASTING_PIPELINE_MODE,
-            parallel_actors=5,
+            parallel_actors=10,
+        )
+    }
+
+if BEST_MODEL_STRATEGY:
+    modelling_tasks |= {
+        "Best Model Strategy": BestModelStrategyTask(
+            transformed_data_dir=data_ns.TRANSFORMED_DATA_DIR,
+            forecast_dir=data_ns.FORECAST_RESULT_DIR,
+            result_dir=data_ns.SELECTED_DATA_DIR,
+            metric=rmse,
+            last_evaluation_date="2024-01-23 15",
+            mode="recreate",
         )
     }
 
