@@ -89,6 +89,8 @@ class Evaluator:
         selected_data = pd.concat(selected_data)
         reference_data = pd.concat(reference_data)
 
+        print(reference_data[reference_data["VALUE"] > 1000])
+
         evaluation = OrderedDict()
 
         for metric in self.metrics:

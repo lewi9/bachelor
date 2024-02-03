@@ -8,8 +8,10 @@ from typing import OrderedDict
 
 import numpy as np
 import pandas as pd
-from sktime.forecasting.arima import ARIMA, AutoARIMA
+from sktime.forecasting.arima import ARIMA
+from sktime.forecasting.sarimax import SARIMAX
 from sktime.forecasting.croston import Croston
+from sktime.forecasting.fbprophet import Prophet
 from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.arch import StatsForecastGARCH
 from sktime.transformations.series.outlier_detection import HampelFilter
@@ -42,8 +44,8 @@ from app.utils.process_pipeline import ProcessPipeline
 from app.utils.task_pipeline import TaskPipeline
 
 DOWNLOAD_DATA = 0
-EXCTRACT_DATA = 0
-TRANSFORM_DATA = 0
+EXCTRACT_DATA = 1
+TRANSFORM_DATA = 1
 
 FORECASTING_PIPELINE = 1
 BEST_MODEL_STRATEGY = 1
@@ -51,7 +53,7 @@ AGG_MODEL_STRATEGY = 0
 
 PICKLE_EVALUATION = 1
 
-FULL_EXTRACTION = 0
+FULL_EXTRACTION = 1
 
 FORECAST_PERIOD = 48
 FORECASTING_PIPELINE_MODE = "recreate"
@@ -148,8 +150,38 @@ if FORECASTING_PIPELINE:
         NanDropper(),
     ]
     forecasters = {
-        "AutoARIMA": AutoARIMA(),
-        "ARIMA": ARIMA(),
+        "PROPHET_DEFAULT": Prophet(
+            freq="H",
+            add_seasonality=True,
+            daily_seasonality=True,
+            weekly_seasonality=True,
+            yearly_seasonality=True,
+        ),
+        "PROPHET_NO_SEASONALITY": Prophet(
+            freq="H", add_seasonality=False, daily_seasonality=False
+        ),
+        "PROPHET_NO_WEEKLY_SEASONALITY": Prophet(
+            freq="H",
+            add_seasonality=True,
+            daily_seasonality=True,
+            yearly_seasonality=True,
+        ),
+        "PROPHET_MULT_SEAS": Prophet(
+            freq="H",
+            add_seasonality=True,
+            daily_seasonality=True,
+            yearly_seasonality=True,
+            seasonality_mode="multiplicative",
+        ),
+        "ARIMA_1": ARIMA(),
+        "ARIMA_2": ARIMA((1, 1, 0)),
+        "ARIMA_3": ARIMA((1, 1, 1)),
+        "SARIMAX_Y": SARIMAX((1, 1, 1), (1, 1, 1, 24 * 365)),
+        "SARIMAX_D1": SARIMAX((1, 1, 1), (1, 1, 1, 24)),
+        "SARIMAX_D2": SARIMAX((1, 1, 2), (1, 1, 2, 24)),
+        "SARIMAX_D3": SARIMAX((1, 0, 1), (1, 0, 1, 24)),
+        "SARIMAX_D4": SARIMAX((2, 1, 1), (2, 1, 1, 24)),
+        "CROSTON_0.01": Croston(smoothing=0.01),
         "CROSTON_0.1": Croston(smoothing=0.1),
         "CROSTON_0.2": Croston(smoothing=0.2),
         "CROSTON_0.5": Croston(smoothing=0.5),
@@ -202,7 +234,7 @@ if FORECASTING_PIPELINE:
             last_valid_actual="2024-01-23 15",
             exo_filler="mean",
             mode=FORECASTING_PIPELINE_MODE,
-            parallel_actors=10,
+            parallel_batch=8,
         )
     }
 

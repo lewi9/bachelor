@@ -5,6 +5,7 @@ import logging
 import os
 from typing import Iterable
 
+import numpy as np
 import pandas as pd
 
 from app.data_managers.namespaces import (
@@ -157,6 +158,9 @@ class SensorDataExtractionTask(Task):
         for column in columns:
             series = df[column].apply(pd.Series)
             series = series.rename(columns={sensor_json_ns.VALUE: series.iloc[0, 0]})
+            if sensor_json_ns.NAME in series.columns:
+                mask = series[sensor_json_ns.NAME] != series.iloc[0, 0]
+                series.iloc[mask] = np.nan
             result = pd.concat([result, series], axis=1)
 
         columns = result.columns.to_list()

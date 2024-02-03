@@ -257,7 +257,7 @@ class ForecastingPipelineTask(Task):
         last_valid_actual: str,
         exo_filler: ExoFiller = "mean",
         mode: ForecastingPipelineMode = "recreate",
-        parallel_actors: int = 10,
+        parallel_batch: int = 7,
     ):
         """
         Paramaters
@@ -287,12 +287,9 @@ class ForecastingPipelineTask(Task):
             Mode to controll how pipeline will be run.
             If "recreate" then all files in result_dir will be deleted.
             If None then pipeline will check if dir exists and skip it if it does.
-        parallel_actors : int
-            Number of actors that will be used to perform forecasting.
-            The cluster will be created with this number of actors.
-            After the actors are processed, the cluster will be closed.
-            The recreating of cluster is needed to avoid memory leaks.
-            I don't know how to choose this number.
+        parallel_batch : int
+            Number of files processed in parallel.
+            After processing this number of files, the pipeline will restart the ray cluster.
         """
         super().__init__()
         self.input_dir = input_dir
@@ -306,7 +303,7 @@ class ForecastingPipelineTask(Task):
         )
         self.exo_filler = exo_filler
         self.mode = mode
-        self.parallel_actors = parallel_actors
+        self.parallel_batch = parallel_batch
 
     def _run(self):
         """
@@ -320,14 +317,14 @@ class ForecastingPipelineTask(Task):
         counter = 0
         while files:
             try:
-                self._call_remote_pipeline(files[: self.parallel_actors])
+                self._call_remote_pipeline(files[: self.parallel_batch])
             except:
                 logging.info("Error occured. Trying again.")
                 counter += 1
                 if counter < 5:
                     continue
             counter = 0
-            files = files[self.parallel_actors :]
+            files = files[self.parallel_batch :]
 
     def _call_remote_pipeline(self, file_names: list[str]) -> None:
         """
@@ -338,12 +335,14 @@ class ForecastingPipelineTask(Task):
         file_names : list[str]
             List with names of files that will be processed.
         """
+        logging.info("\n\nStart cluster\n\n")
         ray.init()
         results_ref = [
             _run_remote.remote(file_name=file_name, **self.__dict__)
             for file_name in file_names
         ]
         ray.get(results_ref)
+        logging.info("\n\nShutdown cluster\n\n")
         ray.shutdown()
 
     def _handle_result_dir(self) -> bool:
