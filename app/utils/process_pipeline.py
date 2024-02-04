@@ -1,5 +1,7 @@
 """Pipeline of Pipelines. One Pipeline to rule them all."""
+
 import logging
+import datetime
 from typing import OrderedDict
 
 import numpy as np
@@ -38,6 +40,6 @@ class ProcessPipeline:
         return self._pipelines_execution_time
 
     @property
-    def execution_time(self):
+    def execution_time(self) -> datetime.timedelta:
         """Return total execution time."""
         return np.sum(list(self._pipelines_execution_time.values()))

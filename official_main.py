@@ -44,12 +44,12 @@ from app.utils.evaluator import Evaluator
 from app.utils.process_pipeline import ProcessPipeline
 from app.utils.task_pipeline import TaskPipeline
 
-DOWNLOAD_DATA = 0
-EXCTRACT_DATA = 0
+DOWNLOAD_DATA = 1
+EXCTRACT_DATA = 1
 TRANSFORM_DATA = 0
 
-FORECASTING_PIPELINE = 1
-BEST_MODEL_STRATEGY = 1
+FORECASTING_PIPELINE = 0
+BEST_MODEL_STRATEGY = 0
 AGG_MODEL_STRATEGY = 0
 
 PICKLE_EVALUATION = 1
@@ -151,32 +151,30 @@ if FORECASTING_PIPELINE:
         NanDropper(),
     ]
     forecasters = {
-        """
-        "PROPHET": Prophet(),
-        "PROPHET_DEFAULT": Prophet(
-            freq="H",
-            add_seasonality=True,
-            daily_seasonality=True,
-            weekly_seasonality=True,
-            yearly_seasonality=True,
-        ),
-        "PROPHET_MULT_SEAS": Prophet(
-            freq="H",
-            add_seasonality=True,
-            daily_seasonality=True,
-            yearly_seasonality=True,
-            seasonality_mode="multiplicative",
-        ),
-        "ARIMA_1": ARIMA(),
-        "ARIMA_2": ARIMA((1, 1, 0)),
-        "ARIMA_3": ARIMA((1, 1, 1)),
-        "SARIMAX_Y": SARIMAX((1, 1, 1), (1, 1, 1, 24 * 365)),
-        "SARIMAX_D": SARIMAX((1, 0, 0), (1, 0, 0, 24)),
-        "SARIMAX_D1": SARIMAX((1, 1, 1), (1, 1, 1, 24)),
+        # "PROPHET": Prophet(),
+        # "PROPHET_DEFAULT": Prophet(
+        #    freq="H",
+        #    add_seasonality=True,
+        #    daily_seasonality=True,
+        #    weekly_seasonality=True,
+        #    yearly_seasonality=True,
+        # ),
+        # "PROPHET_MULT_SEAS": Prophet(
+        #    freq="H",
+        #    add_seasonality=True,
+        #    daily_seasonality=True,
+        #    yearly_seasonality=True,
+        #    seasonality_mode="multiplicative",
+        # ),
+        # "ARIMA_1": ARIMA(),
+        # "ARIMA_2": ARIMA((1, 1, 0)),
+        # "ARIMA_3": ARIMA((1, 1, 1)),
+        # "SARIMAX_Y": SARIMAX((1, 1, 1), (1, 1, 1, 24 * 365)),
+        # "SARIMAX_D": SARIMAX((1, 0, 0), (1, 0, 0, 24)),
+        # "SARIMAX_D1": SARIMAX((1, 1, 1), (1, 1, 1, 24)),
         # "SARIMAX_D2": SARIMAX((1, 1, 2), (1, 1, 2, 24)),
-        "SARIMAX_D3": SARIMAX((1, 0, 1), (1, 0, 1, 24)),
+        # "SARIMAX_D3": SARIMAX((1, 0, 1), (1, 0, 1, 24)),
         # "SARIMAX_D4": SARIMAX((2, 1, 1), (2, 1, 1, 24)),
-        """
         "CROSTON_0.01": Croston(smoothing=0.01),
         "CROSTON_0.1": Croston(smoothing=0.1),
         "CROSTON_0.2": Croston(smoothing=0.2),
@@ -281,7 +279,7 @@ ev = Evaluator(
 )
 
 results = ev.evaluate()
-results["execution_time"] = process_pipeline.execution_time
+results["execution_time"] = process_pipeline.execution_time.seconds
 
 logging.info("Results: %s", results)
 
