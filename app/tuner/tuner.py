@@ -128,6 +128,7 @@ class Tuner:
 
             def _evaluate(self, x, out, *args, **kwargs):
                 F = []
+                self.counter += 1
                 for iteratation_, vec in enumerate(x):
                     sub_F = []
 
