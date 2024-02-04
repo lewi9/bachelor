@@ -31,6 +31,7 @@ from app.modelling.agg_model_strategy_task import AggModelStrategyTask
 from app.modelling.best_model_strategy_task import BestModelStrategyTask
 from app.modelling.forecasting_pipeline_task import ForecastingPipelineTask
 from app.modelling.metrics import mae, maxae, rmse
+from app.modelling.models import LinReg, RandomForrest, RegressionTree
 from app.modelling.splitters import ExpandingWindowSplitter, SlidingWindowSplitter
 from app.modelling.transformers import (
     CompletnessFilter,
@@ -44,8 +45,8 @@ from app.utils.process_pipeline import ProcessPipeline
 from app.utils.task_pipeline import TaskPipeline
 
 DOWNLOAD_DATA = 0
-EXCTRACT_DATA = 1
-TRANSFORM_DATA = 1
+EXCTRACT_DATA = 0
+TRANSFORM_DATA = 0
 
 FORECASTING_PIPELINE = 1
 BEST_MODEL_STRATEGY = 1
@@ -53,7 +54,7 @@ AGG_MODEL_STRATEGY = 0
 
 PICKLE_EVALUATION = 1
 
-FULL_EXTRACTION = 1
+FULL_EXTRACTION = 0
 
 FORECAST_PERIOD = 48
 FORECASTING_PIPELINE_MODE = "recreate"
@@ -150,20 +151,13 @@ if FORECASTING_PIPELINE:
         NanDropper(),
     ]
     forecasters = {
+        """
+        "PROPHET": Prophet(),
         "PROPHET_DEFAULT": Prophet(
             freq="H",
             add_seasonality=True,
             daily_seasonality=True,
             weekly_seasonality=True,
-            yearly_seasonality=True,
-        ),
-        "PROPHET_NO_SEASONALITY": Prophet(
-            freq="H", add_seasonality=False, daily_seasonality=False
-        ),
-        "PROPHET_NO_WEEKLY_SEASONALITY": Prophet(
-            freq="H",
-            add_seasonality=True,
-            daily_seasonality=True,
             yearly_seasonality=True,
         ),
         "PROPHET_MULT_SEAS": Prophet(
@@ -177,10 +171,12 @@ if FORECASTING_PIPELINE:
         "ARIMA_2": ARIMA((1, 1, 0)),
         "ARIMA_3": ARIMA((1, 1, 1)),
         "SARIMAX_Y": SARIMAX((1, 1, 1), (1, 1, 1, 24 * 365)),
+        "SARIMAX_D": SARIMAX((1, 0, 0), (1, 0, 0, 24)),
         "SARIMAX_D1": SARIMAX((1, 1, 1), (1, 1, 1, 24)),
-        "SARIMAX_D2": SARIMAX((1, 1, 2), (1, 1, 2, 24)),
+        # "SARIMAX_D2": SARIMAX((1, 1, 2), (1, 1, 2, 24)),
         "SARIMAX_D3": SARIMAX((1, 0, 1), (1, 0, 1, 24)),
-        "SARIMAX_D4": SARIMAX((2, 1, 1), (2, 1, 1, 24)),
+        # "SARIMAX_D4": SARIMAX((2, 1, 1), (2, 1, 1, 24)),
+        """
         "CROSTON_0.01": Croston(smoothing=0.01),
         "CROSTON_0.1": Croston(smoothing=0.1),
         "CROSTON_0.2": Croston(smoothing=0.2),
@@ -210,6 +206,9 @@ if FORECASTING_PIPELINE:
         "NAIVE_MEAN_3D": NaiveForecaster(strategy="mean", window_length=3 * 24),
         "StatsForecastGARCH": StatsForecastGARCH(),
         "COMPLEX_GARCH": StatsForecastGARCH(p=5, q=5),
+        "LinReg": LinReg(),
+        "RandomForrest": RandomForrest(),
+        "RegressionTree": RegressionTree(),
     }
 
     splitters = {
@@ -234,7 +233,7 @@ if FORECASTING_PIPELINE:
             last_valid_actual="2024-01-23 15",
             exo_filler="mean",
             mode=FORECASTING_PIPELINE_MODE,
-            parallel_batch=8,
+            parallel_batch=20,
         )
     }
 

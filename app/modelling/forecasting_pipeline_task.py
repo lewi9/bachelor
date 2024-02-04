@@ -4,6 +4,7 @@ import itertools
 import logging
 import os
 import shutil
+import time
 import warnings
 from typing import Iterable, Sequence, Union
 
@@ -19,7 +20,7 @@ from app.modelling.splitters import BaseWindowSplitter
 from app.utils.task import Task
 
 
-@ray.remote
+# @ray.remote
 def _forecast_data(
     y: pd.Series,
     X: pd.Series,
@@ -81,7 +82,7 @@ def _forecast_data(
     return result
 
 
-@ray.remote
+# @ray.remote
 def _process_data(
     y: pd.Series,
     X: pd.Series,
@@ -137,7 +138,7 @@ def _process_data(
     if exo_filler == "mean":
         for column in X.columns:
             X[column] = X[column].fillna(X[column].mean())
-
+    """
     results_ref = [
         _forecast_data.remote(
             y=y,
@@ -149,7 +150,20 @@ def _process_data(
         )
         for forecaster_name, forecaster in forecasters.items()
     ]
+
     return ray.get(results_ref)
+    """
+    return [
+        _forecast_data(
+            y=y,
+            X=X,
+            forecaster=forecaster,
+            forecaster_name=forecaster_name,
+            splitter_name=splitter_name,
+            fh=fh,
+        )
+        for forecaster_name, forecaster in forecasters.items()
+    ]
 
 
 @ray.remote
@@ -207,6 +221,7 @@ def _run_remote(
         X = to_process.drop(columns=column_names_ns.VALUE)
         y = to_process.loc[:last_valid_actual, column_names_ns.VALUE]
         y.index.freq = pd.infer_freq(y.index)
+        """
         predicted_ref = [
             _process_data.remote(
                 y=y.iloc[index_y],
@@ -221,6 +236,20 @@ def _run_remote(
             for index_y, index_X in splitter.split(y=y, forecasts=max_forecasts)
         ]
         predicted = ray.get(predicted_ref)
+        """
+        predicted = [
+            _process_data(
+                y=y.iloc[index_y],
+                X=X.iloc[index_X],
+                transformers=transformers,
+                exo_filler=exo_filler,
+                forecasters=forecasters,
+                splitter_name=splitter_name,
+                fh=splitter.fh,
+            )
+            for splitter_name, splitter in splitters.items()
+            for index_y, index_X in splitter.split(y=y, forecasts=max_forecasts)
+        ]
         chained_predicted = itertools.chain(*predicted)
         filtered_predicted = filter(
             lambda x: isinstance(x, pd.DataFrame), chained_predicted
@@ -336,7 +365,7 @@ class ForecastingPipelineTask(Task):
             List with names of files that will be processed.
         """
         logging.info("\n\nStart cluster\n\n")
-        ray.init()
+        ray.init(ignore_reinit_error=True)
         results_ref = [
             _run_remote.remote(file_name=file_name, **self.__dict__)
             for file_name in file_names
@@ -344,6 +373,7 @@ class ForecastingPipelineTask(Task):
         ray.get(results_ref)
         logging.info("\n\nShutdown cluster\n\n")
         ray.shutdown()
+        time.sleep(20)
 
     def _handle_result_dir(self) -> bool:
         """
