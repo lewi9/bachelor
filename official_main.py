@@ -32,6 +32,7 @@ from app.modelling.best_model_strategy_task import BestModelStrategyTask
 from app.modelling.forecasting_pipeline_task import ForecastingPipelineTask
 from app.modelling.metrics import mae, maxae, rmse
 from app.modelling.models import LinReg, RandomForrest, RegressionTree
+from app.modelling.postprocess_task import PostprocessTask
 from app.modelling.splitters import ExpandingWindowSplitter, SlidingWindowSplitter
 from app.modelling.transformers import (
     CompletnessFilter,
@@ -39,16 +40,18 @@ from app.modelling.transformers import (
     ImputerBackTime,
     ImputerPandas,
     NanDropper,
+    ValuePositiver,
 )
 from app.utils.evaluator import Evaluator
 from app.utils.process_pipeline import ProcessPipeline
 from app.utils.task_pipeline import TaskPipeline
 
-DOWNLOAD_DATA = 1
-EXCTRACT_DATA = 1
+DOWNLOAD_DATA = 0
+EXCTRACT_DATA = 0
 TRANSFORM_DATA = 0
 
 FORECASTING_PIPELINE = 0
+POSTPROCESSOR = 0
 BEST_MODEL_STRATEGY = 0
 AGG_MODEL_STRATEGY = 0
 
@@ -146,7 +149,7 @@ if FORECASTING_PIPELINE:
         DormantFilter(period=FORECAST_PERIOD + 48),
         CompletnessFilter(0.5),
         ImputerBackTime(period_to_take_value_from=24),
-        HampelFilter(window_length=72),
+        # HampelFilter(window_length=72),
         ImputerPandas(method="linear"),
         NanDropper(),
     ]
@@ -210,9 +213,9 @@ if FORECASTING_PIPELINE:
     }
 
     splitters = {
-        "ExpandingWindowSplitter": ExpandingWindowSplitter(
-            fh=forecast_horizon, step_length=FORECAST_PERIOD
-        ),
+        # "ExpandingWindowSplitter": ExpandingWindowSplitter(
+        #    fh=forecast_horizon, step_length=FORECAST_PERIOD
+        # ),
         "SlidingWindowSplitter": SlidingWindowSplitter(
             fh=forecast_horizon,
             step_length=FORECAST_PERIOD,
@@ -234,6 +237,17 @@ if FORECASTING_PIPELINE:
             parallel_batch=20,
         )
     }
+
+if POSTPROCESSOR:
+    postprocess_transformers = [ValuePositiver()]
+
+    modelling_tasks |= {
+        "Postprocess Task": PostprocessTask(
+            forecasts_result_dir=data_ns.FORECAST_RESULT_DIR,
+            transformers=postprocess_transformers,
+        )
+    }
+
 
 if BEST_MODEL_STRATEGY:
     modelling_tasks |= {
@@ -280,6 +294,7 @@ ev = Evaluator(
 
 results = ev.evaluate()
 results["execution_time"] = process_pipeline.execution_time.seconds
+results["compared"] = ev.compared
 
 logging.info("Results: %s", results)
 

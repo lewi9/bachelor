@@ -6,6 +6,7 @@ from collections import OrderedDict
 from typing import Iterable, Sequence, Union
 
 import numpy as np
+from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.core.problem import Problem
 from pymoo.optimize import minimize
@@ -99,6 +100,14 @@ class Tuner:
 
             res = minimize(problem, algorithm, seed=1, termination=("n_gen", n_gen))
 
+        if self.engine == "nsga_2":
+
+            algorithm = NSGA2(pop_size=n_pop)
+
+            res = minimize(problem, algorithm, ("n_gen", n_gen), seed=1, verbose=False)
+
+        pickle.dump(res, open(os.path.join(result_dir, "final_res.pickle"), "wb"))
+
     def _build_problem(self, ev_metrics: dict, result_dir: str) -> Problem:
         """Build problem."""
 
@@ -141,10 +150,14 @@ class Tuner:
                     splitters = {}
 
                     for i, package in enumerate(self.tuner.forecasters.keys()):
+                        if i >= len(forecasters_string):
+                            break
                         if forecasters_string[i] == "1":
                             forecasters |= self.tuner.forecasters[package]
 
                     for i, splitter in enumerate(self.tuner.splitters.keys()):
+                        if i >= len(splitters_string):
+                            break
                         if splitters_string[i] == "1":
                             splitters |= {splitter: self.tuner.splitters[splitter]}
 
@@ -191,6 +204,7 @@ class Tuner:
                             results["execution_time"] = (
                                 process_pipeline.execution_time.seconds
                             )
+                            results["compared"] = -ev.compared
                             sub_F.append(list(results.values()))
 
                     else:
@@ -236,11 +250,13 @@ class Tuner:
                             results["execution_time"] = (
                                 process_pipeline.execution_time.seconds
                             )
+                            results["compared"] = -ev.compared
                             sub_F.append(list(results.values()))
                     F.append(np.mean(sub_F, axis=0))
                     to_pickle = {}
                     for key, value in zip(list(results.keys()), np.mean(sub_F, axis=0)):
                         to_pickle[key] = value
+                    to_pickle["SOLUTION"] = vec
                     with open(
                         os.path.join(
                             result_dir, f"result_{self.counter}_{iteratation_}.pickle"

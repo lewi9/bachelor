@@ -166,7 +166,7 @@ def _process_data(
     ]
 
 
-@ray.remote
+# @ray.remote
 def _run_remote(
     file_name: str,
     input_dir: str,
@@ -221,22 +221,22 @@ def _run_remote(
         X = to_process.drop(columns=column_names_ns.VALUE)
         y = to_process.loc[:last_valid_actual, column_names_ns.VALUE]
         y.index.freq = pd.infer_freq(y.index)
-        """
-        predicted_ref = [
-            _process_data.remote(
-                y=y.iloc[index_y],
-                X=X.iloc[index_X],
-                transformers=transformers,
-                exo_filler=exo_filler,
-                forecasters=forecasters,
-                splitter_name=splitter_name,
-                fh=splitter.fh,
-            )
-            for splitter_name, splitter in splitters.items()
-            for index_y, index_X in splitter.split(y=y, forecasts=max_forecasts)
-        ]
-        predicted = ray.get(predicted_ref)
-        """
+
+        # predicted_ref = [
+        #    _process_data.remote(
+        #        y=y.iloc[index_y],
+        #        X=X.iloc[index_X],
+        #        transformers=transformers,
+        #        exo_filler=exo_filler,
+        #        forecasters=forecasters,
+        #        splitter_name=splitter_name,
+        #        fh=splitter.fh,
+        #    )
+        #    for splitter_name, splitter in splitters.items()
+        #    for index_y, index_X in splitter.split(y=y, forecasts=max_forecasts)
+        # ]
+        # predicted = ray.get(predicted_ref)
+
         predicted = [
             _process_data(
                 y=y.iloc[index_y],
@@ -343,17 +343,21 @@ class ForecastingPipelineTask(Task):
             return
 
         files = os.listdir(self.input_dir)
-        counter = 0
-        while files:
-            try:
-                self._call_remote_pipeline(files[: self.parallel_batch])
-            except:
-                logging.info("Error occured. Trying again.")
-                counter += 1
-                if counter < 5:
-                    continue
-            counter = 0
-            files = files[self.parallel_batch :]
+
+        for file_name in files:
+            _run_remote(file_name=file_name, **self.__dict__)
+
+        # counter = 0
+        # while files:
+        #    try:
+        #        self._call_remote_pipeline(files[: self.parallel_batch])
+        #    except:
+        #        logging.info("Error occured. Trying again.")
+        #        counter += 1
+        #        if counter < 5:
+        #            continue
+        #    counter = 0
+        #    files = files[self.parallel_batch :]
 
     def _call_remote_pipeline(self, file_names: list[str]) -> None:
         """

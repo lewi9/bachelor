@@ -1,4 +1,5 @@
 """Transformers for ForecastingPipeline."""
+
 from __future__ import annotations
 from abc import ABC, abstractmethod
 
@@ -179,3 +180,22 @@ class DormantFilter(CustomTransformer):
         if y.iloc[-self.period :].isna().all():
             raise ValueError("Sensor is inactive.")
         return y
+
+
+class ValuePositiver(CustomTransformer):
+    """
+    Make all values positive.
+    """
+
+    def transform(self, y: pd.Series) -> pd.Series:
+        """
+        Make all values positive.
+
+        Parameters
+        ----------
+        y : pd.Series
+            Series to transform.
+        """
+        new_y = y.copy()
+        new_y.loc[y[y < 0].index] = 0
+        return new_y
