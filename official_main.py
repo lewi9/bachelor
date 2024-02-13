@@ -48,7 +48,7 @@ from app.utils.task_pipeline import TaskPipeline
 
 DOWNLOAD_DATA = 0
 EXCTRACT_DATA = 0
-TRANSFORM_DATA = 0
+TRANSFORM_DATA = 1
 
 FORECASTING_PIPELINE = 0
 POSTPROCESSOR = 0

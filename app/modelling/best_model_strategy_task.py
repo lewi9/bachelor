@@ -44,7 +44,7 @@ def _load_data(
     return transformed_data, forecast
 
 
-@ray.remote
+# @ray.remote
 def _run_remote(file_name: str, **kwargs):
     """Run task remotely."""
     logging.info("Start processing file %s.", file_name)
@@ -173,13 +173,16 @@ class BestModelStrategyTask(Task):
             return
 
         files = os.listdir(self.forecast_dir)
-        ray.init()
-        results_ref = [
-            _run_remote.remote(file_name=file_name, **self.__dict__)
-            for file_name in files
-        ]
-        ray.get(results_ref)
-        ray.shutdown()
+
+        for file_name in files:
+            _run_remote(file_name=file_name, **self.__dict__)
+        # ray.init()
+        # results_ref = [
+        #    _run_remote.remote(file_name=file_name, **self.__dict__)
+        #    for file_name in files
+        # ]
+        # ray.get(results_ref)
+        # ray.shutdown()
 
     def _handle_result_dir(self) -> bool:
         """

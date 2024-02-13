@@ -106,20 +106,22 @@ class Evaluator:
 
         for metric in self.metrics:
             for dependent_variable in dependent_variable_names:
-                evaluation[f"{dependent_variable}_{str(metric)}"] = metric(
-                    selected_data.xs(
-                        dependent_variable,
-                        level=column_names_ns.DEPENDENT_VARIABLE_NAME,
-                    ),
-                    reference_data.xs(
-                        dependent_variable,
-                        level=column_names_ns.DEPENDENT_VARIABLE_NAME,
-                    ),
+                evaluation[f"{dependent_variable}_{str(metric)}"] = float(
+                    metric(
+                        selected_data.xs(
+                            dependent_variable,
+                            level=column_names_ns.DEPENDENT_VARIABLE_NAME,
+                        ),
+                        reference_data.xs(
+                            dependent_variable,
+                            level=column_names_ns.DEPENDENT_VARIABLE_NAME,
+                        ),
+                    )
                 )
 
         return evaluation
 
     @property
-    def compared(self) -> int:
+    def compared(self) -> float:
         """Return the number of compared values"""
-        return self._compared
+        return float(self._compared)

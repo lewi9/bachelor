@@ -85,10 +85,21 @@ class Tuner:
         self.parallel_batch = parallel_batch
         self.engine = engine
 
-    def tune(self, n_gen: int, n_pop: int, ev_metrics: dict, result_dir: str):
+    def tune(
+        self,
+        n_gen: int,
+        n_pop: int,
+        ev_metrics: dict,
+        result_dir: str,
+        time_constraint: int,
+    ):
         """Tune the model."""
         os.mkdir(result_dir)
-        problem = self._build_problem(ev_metrics=ev_metrics, result_dir=result_dir)
+        problem = self._build_problem(
+            ev_metrics=ev_metrics,
+            result_dir=result_dir,
+            time_constraint=time_constraint,
+        )
 
         if self.engine == "nsga_3":
             directions = len(ev_metrics.keys()) + 1
@@ -106,9 +117,12 @@ class Tuner:
 
             res = minimize(problem, algorithm, ("n_gen", n_gen), seed=1, verbose=False)
 
-        pickle.dump(res, open(os.path.join(result_dir, "final_res.pickle"), "wb"))
+        pickle.dump(res.F, open(os.path.join(result_dir, "final_F.pickle"), "wb"))
+        pickle.dump(res.X, open(os.path.join(result_dir, "final_X.pickle"), "wb"))
 
-    def _build_problem(self, ev_metrics: dict, result_dir: str) -> Problem:
+    def _build_problem(
+        self, ev_metrics: dict, result_dir: str, time_constraint: int
+    ) -> Problem:
         """Build problem."""
 
         class TunerProblem(Problem):
@@ -117,7 +131,7 @@ class Tuner:
             def __init__(self, tuner: Tuner, ev_metrics: dict):
                 self.tuner = tuner
                 self.counter = 0
-                n_obj = len(ev_metrics.keys()) + 1
+                n_obj = len(ev_metrics.keys()) * 3 + 2
                 len_forecasters = len(tuner.forecasters.keys())
                 len_splitters = len(tuner.splitters.keys())
                 len_strategies = len(tuner.strategies.keys())
@@ -133,13 +147,16 @@ class Tuner:
                         len_strategies - eps,
                         len_metrics - eps,
                     ],
+                    n_ieq_constr=1,
                 )
 
             def _evaluate(self, x, out, *args, **kwargs):
                 F = []
+                G = []
                 self.counter += 1
                 for iteratation_, vec in enumerate(x):
                     sub_F = []
+                    sub_G = []
 
                     forecasters_string = bin(int(vec[0]))[2:][::-1]
                     splitters_string = bin(int(vec[1]))[2:][::-1]
@@ -205,7 +222,10 @@ class Tuner:
                                 process_pipeline.execution_time.seconds
                             )
                             results["compared"] = -ev.compared
-                            sub_F.append(list(results.values()))
+                            sub_F.append([*results.values()])
+                            sub_G.append(
+                                results["execution_time"] - time_constraint * 3600
+                            )
 
                     else:
                         for date in self.tuner.dates:
@@ -251,8 +271,12 @@ class Tuner:
                                 process_pipeline.execution_time.seconds
                             )
                             results["compared"] = -ev.compared
-                            sub_F.append(list(results.values()))
+                            sub_F.append([*results.values()])
+                            sub_G.append(
+                                results["execution_time"] - time_constraint * 3600
+                            )
                     F.append(np.mean(sub_F, axis=0))
+                    G.append(np.mean(sub_G, axis=0))
                     to_pickle = {}
                     for key, value in zip(list(results.keys()), np.mean(sub_F, axis=0)):
                         to_pickle[key] = value
@@ -264,7 +288,7 @@ class Tuner:
                         "wb",
                     ) as f:
                         pickle.dump(to_pickle, f)
-
                 out["F"] = F
+                out["G"] = G
 
         return TunerProblem(self, ev_metrics)
