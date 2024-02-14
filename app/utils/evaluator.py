@@ -95,6 +95,9 @@ class Evaluator:
             selected_data.append(selected_df)
             reference_data.append(reference_df_subset)
 
+        if not selected_data or not reference_data:
+            self._compared = 0
+            return None
         selected_data = pd.concat(selected_data)
         reference_data = pd.concat(reference_data)
 

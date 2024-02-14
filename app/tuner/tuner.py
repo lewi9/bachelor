@@ -21,6 +21,8 @@ from app.utils.task_pipeline import TaskPipeline
 
 BEST_MODEL = "best_model"
 
+BIG_CONSTANT = 9999999999
+
 
 class Tuner:
     """Tuner class."""
@@ -218,14 +220,20 @@ class Tuner:
                                 metrics=list(ev_metrics.values()),
                             )
                             results = ev.evaluate()
-                            results["execution_time"] = (
-                                process_pipeline.execution_time.seconds
-                            )
-                            results["compared"] = -ev.compared
-                            sub_F.append([*results.values()])
-                            sub_G.append(
-                                results["execution_time"] - time_constraint * 3600
-                            )
+                            if results is None:
+                                sub_F.append(
+                                    [BIG_CONSTANT] * (len(ev_metrics.keys()) * 3 + 2)
+                                )
+                                sub_G.append(BIG_CONSTANT)
+                            else:
+                                results["execution_time"] = (
+                                    process_pipeline.execution_time.seconds
+                                )
+                                results["compared"] = -ev.compared
+                                sub_F.append([*results.values()])
+                                sub_G.append(
+                                    results["execution_time"] - time_constraint * 3600
+                                )
 
                     else:
                         for date in self.tuner.dates:
@@ -267,27 +275,37 @@ class Tuner:
                                 metrics=list(ev_metrics.values()),
                             )
                             results = ev.evaluate()
-                            results["execution_time"] = (
-                                process_pipeline.execution_time.seconds
-                            )
-                            results["compared"] = -ev.compared
-                            sub_F.append([*results.values()])
-                            sub_G.append(
-                                results["execution_time"] - time_constraint * 3600
-                            )
+                            if results is None:
+                                sub_F.append(
+                                    [BIG_CONSTANT] * (len(ev_metrics.keys()) * 3 + 2)
+                                )
+                                sub_G.append(BIG_CONSTANT)
+                            else:
+                                results["execution_time"] = (
+                                    process_pipeline.execution_time.seconds
+                                )
+                                results["compared"] = -ev.compared
+                                sub_F.append([*results.values()])
+                                sub_G.append(
+                                    results["execution_time"] - time_constraint * 3600
+                                )
                     F.append(np.mean(sub_F, axis=0))
                     G.append(np.mean(sub_G, axis=0))
                     to_pickle = {}
-                    for key, value in zip(list(results.keys()), np.mean(sub_F, axis=0)):
-                        to_pickle[key] = value
-                    to_pickle["SOLUTION"] = vec
-                    with open(
-                        os.path.join(
-                            result_dir, f"result_{self.counter}_{iteratation_}.pickle"
-                        ),
-                        "wb",
-                    ) as f:
-                        pickle.dump(to_pickle, f)
+                    if results:
+                        for key, value in zip(
+                            list(results.keys()), np.mean(sub_F, axis=0)
+                        ):
+                            to_pickle[key] = value
+                        to_pickle["SOLUTION"] = vec
+                        with open(
+                            os.path.join(
+                                result_dir,
+                                f"result_{self.counter}_{iteratation_}.pickle",
+                            ),
+                            "wb",
+                        ) as f:
+                            pickle.dump(to_pickle, f)
                 out["F"] = F
                 out["G"] = G
 
